@@ -11,14 +11,15 @@ module.exports = {
     populate: async (ctx) => {
         console.log("Initializing");
 
-        const options = { 
+        const options = {
             sort: "popularity",
             page: "1",
-            ...ctx.query
+            price: "free",
+            // ...ctx.query
         };
 
         await game.populate(options);
-        
+
         ctx.send({ ok: true });
     }
 };
