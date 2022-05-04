@@ -27,7 +27,8 @@
     "strapi-plugin-upload": "3.6.0",
     "strapi-plugin-users-permissions": "3.6.0",
     "strapi-provider-email-nodemailer": "^3.6.8",
-    "strapi-utils": "3.6.0"
+    "strapi-utils": "3.6.0",
+    "stripe": "^8.220.0"
   },
   "author": {
     "name": "A Strapi developer"
