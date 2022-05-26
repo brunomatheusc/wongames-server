@@ -2,6 +2,7 @@
 
 const stripe = require('stripe')(process.env.STRIPE_KEY);
 const { sanitizeEntity } = require('strapi-utils');
+const orderTemplate = require('../../../config/email-templates/order');
 
 module.exports = {
 	createPaymentIntent: async (ctx) => {
@@ -23,11 +24,9 @@ module.exports = {
 			return { freeGames: true };
 		}
 
-		const total_in_cents = total * 100;
-
 		try {
 			const paymentIntent = await stripe.paymentIntents.create({
-				amount: total_in_cents,
+				amount: total,
 				currency: 'usd',
 				metadata: {
 					integration_check: "accept_a_payment",
@@ -53,18 +52,47 @@ module.exports = {
 		const games = await strapi.config.functions.cart.cartItems(cartGamesIds);
 		const total_in_cents = await strapi.config.functions.cart.total(games);
 
+		let paymentInfo;
+
+		if (total_in_cents > 0) {
+			try {
+				paymentInfo = await stripe.paymentMethods.retrieve(paymentMethod);
+			} catch (error) {
+				ctx.response.status = 402;
+
+				return { error: error.message };
+			}
+		}
+
 		const entry = {
 			total_in_cents,
 			payment_intent_id: paymentIntentId,
-			card_brand: null,
-			card_last4: null,
+			card_brand: paymentInfo?.card?.brand,
+			card_last4: paymentInfo?.card?.last4,
 			games,
 			user: userInfo,
 		};
 
 		const entity = await strapi.services.order.create(entry);
 
+		await strapi.plugins["email-designer"].services.email.sendTemplatedEmail(
+		{
+			to: userInfo.email,
+			from: 'wongames@wongames.com',
+		},
+		{
+			templateId: 1,
+		},
+		{
+			user: userInfo,
+			payment: {
+				total: `${(total_in_cents / 100).toFixed(2)}`,
+				card_brand: entry.card_brand,
+				card_last4: entry.card_last4,
+			},
+			games
+		});
+
 		return sanitizeEntity(entity, { model: strapi.models.order });
-		return { cart, userInfo, games, total_in_cents };
 	},
 };
